@@ -3,41 +3,56 @@ import fs from "fs";
 
 const cartsRouter = Router();
 
-const readCartsFile = () => {
-    if(!fs.existsSync("src/Database/carts.json")){
+const getCarts = async () =>{
+    try {
+        const carts = await fs.promises.readFile("src/Database/carts.json", "utf-8");
+        const cartsConverted = JSON.parse(carts);
+        return cartsConverted;
+    } catch (error) {
         return [];
-    };
-    const data = fs.readFileSync("src/Database/carts.json");
-    return JSON.parse(data);
-}
+    }
+};
+
+const readCartsFile = async () => {
+    try {
+        const dataCarts = await fs.promises.readFile("src/Database/carts.json");
+        return JSON.parse(dataCarts);
+    } catch (error) {
+       return []; 
+    }  
+
+};
 
 const findCartById = (carts, cartId) => {
     return carts.find(cart => cart.id === cartId);
-}
+};
 
-const saveCartsInFile = (carts) => {
-    fs.writeFileSync("src/Database/carts.json", JSON.stringify(carts));
-}
+const saveCartsInFile = async (carts) => {
+    try {
+        await fs.promises.writeFile("src/Database/carts.json", JSON.stringify(carts), "utf-8")
+        return true;
+    } catch (error) {
+        console.error("Error al guardar el archivo de carritos: ", error)
+        return false;
+    }
+};
 
-const readProductsFile = () => {
-    if(!fs.existsSync("src/Database/products.json")){
-        console.warn("El archivo de productos no existe.");
+const readProductsFile = async () => {
+    try {
+        const dataProducts = await fs.promises.readFile("src/Database/products.json", "utf-8");
+        return JSON.parse(dataProducts);
+    } catch (error) {
+        console.warn("El archivo de productos no existe o hubo un error al intentar leerlo")
         return [];
     }
-    try {
-        const data = fs.readFileSync("src/Database/products.json", "utf-8");
-        return JSON.parse(data);
-    } catch (error) {
-        console.error("Error leyendo el archivo de productos:", error);
-        return[];
-   }
-}
+};
+
 const generateId = (carts) => {
     return carts.length > 0 ? carts[carts.length - 1].id + 1 : 1;
 };
 
-cartsRouter.post("/", (req,res) => {
-    const carts = readCartsFile();
+cartsRouter.post("/", async (req,res) => {
+    const carts = await getCarts();
     const cartId = generateId(carts);
     const productsArray = req.body.products || [];
 
@@ -51,14 +66,14 @@ cartsRouter.post("/", (req,res) => {
     };
 
     carts.push(newCart);
-    saveCartsInFile(carts);
+    await saveCartsInFile(carts);
 
     return res.status(201).send({message: "Carrito creado con éxito"});
 });
 
-cartsRouter.get("/:cid", (req,res) => {
+cartsRouter.get("/:cid", async (req,res) => {
     const cartId = parseInt(req.params.cid);
-    const carts = readCartsFile();
+    const carts = await getCarts();
     const cartSelected = findCartById(carts, cartId);
     if(!cartSelected){
         return res.status(404).send({status: "Error", message: `Carrito de id ${cartId} no encontrado`})
@@ -66,7 +81,7 @@ cartsRouter.get("/:cid", (req,res) => {
     return res.status(200).send({message: "Carrito encontrado", payload: cartSelected});
 });
 
-cartsRouter.post("/:cid/product/:pid", (req, res) => {
+cartsRouter.post("/:cid/product/:pid", async (req, res) => {
     try {
         const cartId = parseInt(req.params.cid);
         const productId = parseInt(req.params.pid);
@@ -78,16 +93,16 @@ cartsRouter.post("/:cid/product/:pid", (req, res) => {
             });
         }
 
-        const products = readProductsFile();
+        const products = await readProductsFile();
         const productExist = products.some(product => product.id === productId);
         if(!productExist){
             return res.status(404).send({
                 status: "Error",
                 message: `El producto con id ${productId} no existe`
             })
-        }
-
-        const carts = readCartsFile();
+        };
+        
+        const carts = await readCartsFile();
         const cartSelected = findCartById(carts, cartId);
 
         if(!cartSelected){
@@ -108,7 +123,7 @@ cartsRouter.post("/:cid/product/:pid", (req, res) => {
             })
         }
 
-        saveCartsInFile(carts);
+        await saveCartsInFile(carts);
 
         return res.status(201).send({
             status: "Success",
@@ -119,6 +134,5 @@ cartsRouter.post("/:cid/product/:pid", (req, res) => {
         return res.status(500).send({status: "Error", message: "Ocurrió un error al agregar el producto al carrito"});
     }
 })
-
 
 export default cartsRouter;

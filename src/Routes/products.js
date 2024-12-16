@@ -11,13 +11,13 @@ const getProducts = async () => {
     } catch (error) {
         return [];
     }
-}
+};
 
 const getProductById = async(pId) => {
     const products = await getProducts();
     const product = products.find((p) => p.id === pId);
     return product;
-}
+};
 
 const saveProducts = async (productsArray) => {
     try {
@@ -27,7 +27,7 @@ const saveProducts = async (productsArray) => {
     } catch (error) {
         return false;
     }
-}
+};
 
 productsRouter.get("/", async (req,res) => {
     const limit = parseInt(req.query.limit);
@@ -100,7 +100,7 @@ productsRouter.put("/:pid", async (req,res) => {
     if(!product){
         return res.status(404).send({status: "Error", message: "Producto no encontrado"});
     };
-
+    
     const updatedProducts = products.map(p => {
         if(p.id == productId){
             return {
@@ -116,7 +116,7 @@ productsRouter.put("/:pid", async (req,res) => {
         return res.status(400).send({status: "Error", message: "Algo salió mal"});
     }
     res.send({status: "Success", message: `Producto de id ${productId} cambiado`})
-})
+});
 
 export default productsRouter;
 
