@@ -1,55 +1,19 @@
 import { Router } from "express";
-import fs from "fs";
+import {generateId, getCarts, findCartById, saveCartsInFile} from "../managers/cartsManager.js";
+import {getProducts} from "../managers/productManager.js";
 
 const cartsRouter = Router();
 
-const getCarts = async () =>{
-    try {
-        const carts = await fs.promises.readFile("src/Database/carts.json", "utf-8");
-        const cartsConverted = JSON.parse(carts);
-        return cartsConverted;
-    } catch (error) {
-        return [];
+cartsRouter.get("/", async(req,res) => {
+    const carts = await getCarts();
+    const limit = parseInt(req.query.limit);
+    if(isNaN(limit) || !limit){
+        res.send({status: "Success", payload: carts});
+    } else {
+        const cartsLimit = carts.slice(0, limit);
+        res.send({cartsLimit});
     }
-};
-
-const readCartsFile = async () => {
-    try {
-        const dataCarts = await fs.promises.readFile("src/Database/carts.json");
-        return JSON.parse(dataCarts);
-    } catch (error) {
-       return []; 
-    }  
-
-};
-
-const findCartById = (carts, cartId) => {
-    return carts.find(cart => cart.id === cartId);
-};
-
-const saveCartsInFile = async (carts) => {
-    try {
-        await fs.promises.writeFile("src/Database/carts.json", JSON.stringify(carts), "utf-8")
-        return true;
-    } catch (error) {
-        console.error("Error al guardar el archivo de carritos: ", error)
-        return false;
-    }
-};
-
-const readProductsFile = async () => {
-    try {
-        const dataProducts = await fs.promises.readFile("src/Database/products.json", "utf-8");
-        return JSON.parse(dataProducts);
-    } catch (error) {
-        console.warn("El archivo de productos no existe o hubo un error al intentar leerlo")
-        return [];
-    }
-};
-
-const generateId = (carts) => {
-    return carts.length > 0 ? carts[carts.length - 1].id + 1 : 1;
-};
+})
 
 cartsRouter.post("/", async (req,res) => {
     const carts = await getCarts();
@@ -93,7 +57,7 @@ cartsRouter.post("/:cid/product/:pid", async (req, res) => {
             });
         }
 
-        const products = await readProductsFile();
+        const products = await getProducts();
         const productExist = products.some(product => product.id === productId);
         if(!productExist){
             return res.status(404).send({
@@ -102,7 +66,7 @@ cartsRouter.post("/:cid/product/:pid", async (req, res) => {
             })
         };
         
-        const carts = await readCartsFile();
+        const carts = await getCarts();
         const cartSelected = findCartById(carts, cartId);
 
         if(!cartSelected){

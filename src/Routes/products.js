@@ -1,33 +1,8 @@
 import { Router } from "express";
-import fs from "fs";
+import {getProductById, getProducts, saveProducts} from "../managers/productManager.js";
+import {io} from "../../app.js";
 
 const productsRouter = Router();
-
-const getProducts = async () => {
-    try {
-        const products = await fs.promises.readFile("src/Database/products.json", "utf-8");
-        const productsConveted = JSON.parse(products);
-        return productsConveted;
-    } catch (error) {
-        return [];
-    }
-};
-
-const getProductById = async(pId) => {
-    const products = await getProducts();
-    const product = products.find((p) => p.id === pId);
-    return product;
-};
-
-const saveProducts = async (productsArray) => {
-    try {
-        const productsString = JSON.stringify(productsArray);
-        await fs.promises.writeFile("src/Database/products.json", productsString, "utf-8");
-        return true;
-    } catch (error) {
-        return false;
-    }
-};
 
 productsRouter.get("/", async (req,res) => {
     const limit = parseInt(req.query.limit);
@@ -36,7 +11,7 @@ productsRouter.get("/", async (req,res) => {
         res.send({status: "Success", payload: products});
     } else {
         const productsLimit = products.slice(0, limit);
-        res.send({productsLimit});
+        res.send({status: "Success", payload: productsLimit});
     }
 });
 
@@ -51,6 +26,7 @@ productsRouter.get("/:pid", async (req,res) => {
 
 productsRouter.post("/", async (req, res) => {
     const product = req.body;
+    product.status = true;
     const products = await getProducts();
     if(products.length === 0){
         product.id = 1;
@@ -65,12 +41,15 @@ productsRouter.post("/", async (req, res) => {
     if(isNaN(product.price)) {
         return res.status(400).send({message: "El precio debe ser un numero"});
     }
+
     products.push(product);
     const savedProducts = await saveProducts(products);
     if(!savedProducts){
         return res.send({status: "Error", message: "El producto no pudo ser añadido"})
     }
-    res.send({status: "Success", message: "Producto añadido"})
+    
+    io.emit("updatedProducts", await getProducts());
+    res.send({status: "Success", message: "Producto añadido"});
 });
 
 productsRouter.delete("/:pid", async (req,res) => {
@@ -86,6 +65,8 @@ productsRouter.delete("/:pid", async (req,res) => {
         return res.status(400).send({status: "Error", message: "Algo salió mal"}
         )
     }
+
+    io.emit("updatedProducts", await getProducts());
     res.send({status: "Succes", message: "Producto eliminado"})
 });
 
@@ -115,6 +96,8 @@ productsRouter.put("/:pid", async (req,res) => {
     if(!savedProducts){
         return res.status(400).send({status: "Error", message: "Algo salió mal"});
     }
+
+    io.emit("updatedProducts", await getProducts());
     res.send({status: "Success", message: `Producto de id ${productId} cambiado`})
 });
 
