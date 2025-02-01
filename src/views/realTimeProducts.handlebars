@@ -1,12 +1,26 @@
 <body>
     <h1>Productos en tiempo real</h1>
+    {{#if products.length}}
     <ul id="productsList">
         {{#each products}}
         <li>{{this.title}} - {{this.price}}</li>
-        <button onclick="deleteProduct({{this.id}})">Borrar</button>
+        <button onclick="deleteProduct(`{{this.id}}`)">Borrar</button>
         {{/each}}
     </ul>
-    
+    {{else}}
+        <p>No hay prodcutos disponibles</p>
+    {{/if}}
+
+    <div class="pagination">
+         {{#if hasPrevPage}}
+            <a href="{{prevLink}}">Anterior</a>       
+        {{/if}}
+        Pagina {{page}} de {{totalPages}}
+        {{#if hasNextPage}}
+            <a href="{{nextLink}}">Siguiente</a>
+        {{/if}}
+    </div>
+
     <h2>Añadir Productos</h2>
     <form id="addProductForm">
         <input type="text" id="title" placeholder="Titulo" required>

@@ -1,14 +1,30 @@
 const socket = io();
 
-socket.on("updatedProducts", (products) => {
+//escuchar y actualizar la lista de productos
+socket.on("updatedProducts", ({products, page, totalPages}) => {
     const productsList = document.getElementById("productsList");
     productsList.innerHTML = "";
-    products.forEach(el => {
+    console.log(products, page, totalPages);
+    products.forEach((p) => {
         const li = document.createElement("li");
-        li.textContent = `${el.title} - ${el.price}`
+        li.innerHTML = `${p.title} - $${p.price} <button onClick="deleteProduct('${p._id}')">Borrar</button>`;
         productsList.appendChild(li);
-    });
+    })
+
+    document.querySelector(".pagination").innerHTML = `
+    ${page > 1 ? `<a href="#" onclick="changePage(${page - 1})">Anterior</a>` : ""}
+    Página ${page} de ${totalPages}
+    ${page < totalPages ? `<a href="#" onclick="changePage(${page + 1})">Siguiente</a>` : ""}
+`;
+
+    //redirigir 
+    location.reload();
 })
+
+//funcion que uso para cambiar la paginacin y traer los prdocutso correspondientes
+function changePage(newPage){
+    socket.emit("requestProducts", newPage);
+}
 
 //Formulario para añadir productos
 const addProductForm = document.getElementById("addProductForm");
@@ -22,6 +38,11 @@ addProductForm.addEventListener("submit", async (e) => {
     const category = document.getElementById("category").value;
     const description = document.getElementById("description").value;
 
+    if (!title || isNaN(price) || isNaN(code) || isNaN(stock) || !category || !description) {
+        alert("Todos los campos son obligatorios y debn ser validos.");
+        return;
+    }
+
     //aca creo el objeto product para enviarlo despues por el fetch
     const product = {
         title,
@@ -32,41 +53,12 @@ addProductForm.addEventListener("submit", async (e) => {
         description
     }
 
-    try {
-        const response = await fetch("/api/products", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(product) //le mando el producto y espero la response
-        })
+    socket.emit("addProduct", product);
 
-        const result = await response.json();
-        if(response.ok){
-            console.log("Producto añadido con exito", result.message);
-        } else {
-            console.log("Error al añadir producto", result.message);
-        }
-    } catch (error) {
-        console.log("Error al enviar la solicitud", error);
-    }
-
-    //para limpiar el form
     addProductForm.reset();
-})
+});
 
 //Eliminacion de productos 
 function deleteProduct(productId){
     socket.emit("deleteProduct", productId);
 }
-
-//Escuchas y actualizar la lista de productos
-socket.on("updatedProducts", (products) => {
-    const productsList = document.getElementById("productsList");
-    productsList.innerHTML = "";
-    products.forEach(p => {
-        const li = document.createElement("li");
-        li.innerHTML = `${p.title} - $${p.price} <button onClick="deleteProduct(${p.id})">Borrar</button>`;
-        productsList.appendChild(li);
-    })
-})
